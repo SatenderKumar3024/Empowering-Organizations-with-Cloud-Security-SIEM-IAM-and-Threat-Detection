@@ -6,7 +6,6 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import {
   Compass,
-  Globe,
   FileBarChart,
   Users,
   Bell,
@@ -25,6 +24,7 @@ interface SidebarItem {
   href: string
   count?: number
   active?: boolean
+  value: string
 }
 
 export function DashboardSidebar() {
@@ -35,6 +35,7 @@ export function DashboardSidebar() {
       icon: <Shield className="h-5 w-5" />,
       label: "IOCs",
       href: "#iocs",
+      value: "iocs",
       count: 2347,
       active: activeItem === "iocs",
     },
@@ -42,37 +43,35 @@ export function DashboardSidebar() {
       icon: <Compass className="h-5 w-5" />,
       label: "Threat Hunting",
       href: "#threat-hunting",
+      value: "threat-hunting",
       active: activeItem === "threat-hunting",
-    },
-    {
-      icon: <Globe className="h-5 w-5" />,
-      label: "Global Threats",
-      href: "#global-threats",
-      count: 156,
-      active: activeItem === "global-threats",
     },
     {
       icon: <AlertTriangle className="h-5 w-5" />,
       label: "Vulnerabilities",
       href: "#vulnerabilities",
+      value: "vulnerabilities",
       active: activeItem === "vulnerabilities",
     },
     {
       icon: <FileBarChart className="h-5 w-5" />,
       label: "Reports",
       href: "#reports",
+      value: "reports",
       active: activeItem === "reports",
     },
     {
       icon: <Users className="h-5 w-5" />,
       label: "Team",
       href: "#team",
+      value: "team",
       active: activeItem === "team",
     },
     {
       icon: <Bell className="h-5 w-5" />,
       label: "Alerts",
       href: "#alerts",
+      value: "alerts",
       count: 7,
       active: activeItem === "alerts",
     },
@@ -80,37 +79,39 @@ export function DashboardSidebar() {
       icon: <Database className="h-5 w-5" />,
       label: "Splunk",
       href: "#splunk",
+      value: "splunk",
       active: activeItem === "splunk",
     },
     {
       icon: <Ticket className="h-5 w-5" />,
       label: "ServiceNow",
       href: "#servicenow",
+      value: "servicenow",
       active: activeItem === "servicenow",
     },
     {
       icon: <Settings className="h-5 w-5" />,
       label: "Settings",
       href: "#settings",
+      value: "settings",
       active: activeItem === "settings",
     },
   ]
 
-  const handleItemClick = (label: string, href: string) => {
-    const itemId = label.toLowerCase().replace(/\s+/g, "-")
-    setActiveItem(itemId)
+  // Create a custom event to communicate between components
+  const handleItemClick = (item: SidebarItem) => {
+    setActiveItem(item.value)
 
-    // Find the tab element and click it if it exists
-    const tabId = href.replace("#", "")
-    const tabElement = document.querySelector(`[data-value="${tabId}"], [value="${tabId}"]`) as HTMLElement
+    // Dispatch a custom event that the dashboard content can listen for
+    const event = new CustomEvent("dashboardNavigate", {
+      detail: { tabValue: item.value },
+    })
+    window.dispatchEvent(event)
+
+    // Try to find and click the tab directly as a fallback
+    const tabElement = document.querySelector(`[data-value="${item.value}"]`) as HTMLElement
     if (tabElement) {
       tabElement.click()
-    }
-
-    // Scroll to the section if it exists
-    const section = document.getElementById(href.replace("#", ""))
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth" })
     }
   }
 
@@ -134,17 +135,13 @@ export function DashboardSidebar() {
         </div>
         <div className="mt-2 space-y-1">
           {sidebarItems.map((item) => (
-            <a
+            <button
               key={item.label}
-              href={item.href}
               className={cn(
-                "flex items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-primary/10 hover:text-primary",
+                "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-primary/10 hover:text-primary",
                 item.active ? "bg-primary/15 text-primary" : "text-foreground",
               )}
-              onClick={(e) => {
-                e.preventDefault()
-                handleItemClick(item.label, item.href)
-              }}
+              onClick={() => handleItemClick(item)}
             >
               <div className="flex items-center gap-2">
                 {item.icon}
@@ -163,7 +160,7 @@ export function DashboardSidebar() {
                   </Badge>
                 )}
               </div>
-            </a>
+            </button>
           ))}
         </div>
       </div>

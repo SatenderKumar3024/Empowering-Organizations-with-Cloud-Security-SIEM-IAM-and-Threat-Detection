@@ -1,343 +1,252 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Search, Filter, Download, MoreHorizontal, FileText, AlertTriangle, Shield, Server } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Search, Download, Copy, AlertCircle } from "lucide-react"
 
-interface IOCData {
-  indicator: string
-  type: "file" | "url" | "email" | "domain" | "ip"
-  threatType: string
-  source: "AbuseIPDB" | "OTX" | "MISP" | "ThreatConnect"
-  timestamp: string
-  country: string
-  confidence: number
+interface IOC {
+  id: string
+  type: string
+  value: string
+  firstSeen: string
+  lastSeen: string
+  confidence: "Low" | "Medium" | "High"
+  source: string
+  campaign?: string
 }
 
-// Full dataset
-const fullIOCData: IOCData[] = [
-  {
-    indicator: "k6x7jkitb5nlh9f5o4amabo14zbna9jo.exe",
-    type: "file",
-    threatType: "Botnet",
-    source: "AbuseIPDB",
-    timestamp: "4/7/2025, 11:11:59 PM",
-    country: "SE",
-    confidence: 20,
-  },
-  {
-    indicator: "4i1zbn71j5ii1vw96cq86gm923lv8z75.exe",
-    type: "file",
-    threatType: "C2",
-    source: "AbuseIPDB",
-    timestamp: "4/24/2025, 8:07:08 PM",
-    country: "CN",
-    confidence: 98,
-  },
-  {
-    indicator: "https://bbp5f2sx.net/path/jmnnz",
-    type: "url",
-    threatType: "Malware (Emotet)",
-    source: "OTX",
-    timestamp: "4/11/2025, 12:42:35 PM",
-    country: "NL",
-    confidence: 56,
-  },
-  {
-    indicator: "https://xru33a3a.org/path/470kq",
-    type: "url",
-    threatType: "Ransomware",
-    source: "OTX",
-    timestamp: "4/1/2025, 11:25:13 PM",
-    country: "US",
-    confidence: 96,
-  },
-  {
-    indicator: "https://wo68hjeq.com/path/iybbj",
-    type: "url",
-    threatType: "Malware (Lokibot)",
-    source: "OTX",
-    timestamp: "4/25/2025, 6:13:56 PM",
-    country: "IN",
-    confidence: 78,
-  },
-  {
-    indicator: "https://i69hr0th.org/path/haqjn",
-    type: "url",
-    threatType: "Ransomware",
-    source: "OTX",
-    timestamp: "4/21/2025, 10:29:57 AM",
-    country: "BR",
-    confidence: 30,
-  },
-  {
-    indicator: "pahv2nhyke0u4ven4g7rjzl415sw8vje.exe",
-    type: "file",
-    threatType: "Scanning",
-    source: "OTX",
-    timestamp: "4/16/2025, 5:33:11 AM",
-    country: "ES",
-    confidence: 66,
-  },
-  {
-    indicator: "8lccf70g@90659r.org",
-    type: "email",
-    threatType: "Malware (Emotet)",
-    source: "OTX",
-    timestamp: "4/21/2025, 3:22:06 AM",
-    country: "CN",
-    confidence: 44,
-  },
-  {
-    indicator: "w5tdg8wlfnb1ydfpjobr1jmznveozhut.pdf",
-    type: "file",
-    threatType: "C2",
-    source: "OTX",
-    timestamp: "3/29/2025, 2:23:17 PM",
-    country: "CA",
-    confidence: 1,
-  },
-  {
-    indicator: "w0x19vnt@7mionr.com",
-    type: "email",
-    threatType: "Phishing",
-    source: "AbuseIPDB",
-    timestamp: "4/11/2025, 5:57:25 PM",
-    country: "DE",
-    confidence: 18,
-  },
-  // Additional entries for different time filters
-  {
-    indicator: "malicious-domain.com",
-    type: "domain",
-    threatType: "Phishing",
-    source: "MISP",
-    timestamp: "4/26/2025, 2:15:00 PM",
-    country: "RU",
-    confidence: 85,
-  },
-  {
-    indicator: "192.168.1.254",
-    type: "ip",
-    threatType: "Scanning",
-    source: "ThreatConnect",
-    timestamp: "4/26/2025, 1:30:00 PM",
-    country: "KP",
-    confidence: 92,
-  },
-  {
-    indicator: "evil-attachment.docx",
-    type: "file",
-    threatType: "Malware",
-    source: "MISP",
-    timestamp: "4/26/2025, 12:45:00 PM",
-    country: "IR",
-    confidence: 77,
-  },
-  {
-    indicator: "admin@phishing-domain.net",
-    type: "email",
-    threatType: "Phishing",
-    source: "AbuseIPDB",
-    timestamp: "4/26/2025, 11:20:00 AM",
-    country: "UA",
-    confidence: 63,
-  },
-  {
-    indicator: "https://fake-login.com/portal",
-    type: "url",
-    threatType: "Credential Harvesting",
-    source: "OTX",
-    timestamp: "4/26/2025, 10:05:00 AM",
-    country: "BY",
-    confidence: 89,
-  },
-]
+export function IOCTable() {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [iocs, setIocs] = useState<IOC[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-export function IOCTable({ timeFilter = "24h" }: { timeFilter?: string }) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filteredData, setFilteredData] = useState<IOCData[]>([])
-  const [totalCount, setTotalCount] = useState(20000)
-
-  // Filter data based on time filter
   useEffect(() => {
-    // Get current date for comparison
-    const now = new Date()
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setIocs([
+        {
+          id: "ioc-001",
+          type: "IP Address",
+          value: "192.168.45.123",
+          firstSeen: "2025-04-20",
+          lastSeen: "2025-04-27",
+          confidence: "High",
+          source: "Internal SIEM",
+          campaign: "BlackCat Ransomware",
+        },
+        {
+          id: "ioc-002",
+          type: "Domain",
+          value: "malicious-domain.com",
+          firstSeen: "2025-04-22",
+          lastSeen: "2025-04-27",
+          confidence: "Medium",
+          source: "Threat Intelligence Feed",
+        },
+        {
+          id: "ioc-003",
+          type: "Hash",
+          value: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+          firstSeen: "2025-04-15",
+          lastSeen: "2025-04-26",
+          confidence: "High",
+          source: "CISA Advisory",
+          campaign: "APT29 Campaign",
+        },
+        {
+          id: "ioc-004",
+          type: "URL",
+          value: "https://fake-login.malicious-site.net/portal",
+          firstSeen: "2025-04-24",
+          lastSeen: "2025-04-27",
+          confidence: "High",
+          source: "Phishing Report",
+          campaign: "Credential Harvest",
+        },
+        {
+          id: "ioc-005",
+          type: "Email",
+          value: "suspicious@phishing-domain.com",
+          firstSeen: "2025-04-23",
+          lastSeen: "2025-04-25",
+          confidence: "Medium",
+          source: "Email Gateway",
+        },
+        {
+          id: "ioc-006",
+          type: "IP Address",
+          value: "45.67.89.123",
+          firstSeen: "2025-04-21",
+          lastSeen: "2025-04-27",
+          confidence: "High",
+          source: "Firewall Logs",
+          campaign: "DDoS Campaign",
+        },
+        {
+          id: "ioc-007",
+          type: "Hash",
+          value: "z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4",
+          firstSeen: "2025-04-19",
+          lastSeen: "2025-04-26",
+          confidence: "Low",
+          source: "Sandbox Analysis",
+        },
+      ])
+      setIsLoading(false)
+    }, 1000)
 
-    // Calculate the cutoff time based on the timeFilter
-    let cutoffTime: Date
-    switch (timeFilter) {
-      case "1h":
-        cutoffTime = new Date(now.getTime() - 60 * 60 * 1000)
-        setTotalCount(5000)
-        break
-      case "6h":
-        cutoffTime = new Date(now.getTime() - 6 * 60 * 60 * 1000)
-        setTotalCount(10000)
-        break
-      case "12h":
-        cutoffTime = new Date(now.getTime() - 12 * 60 * 60 * 1000)
-        setTotalCount(15000)
-        break
-      case "24h":
+    return () => clearTimeout(timer)
+  }, [])
+
+  const filteredIOCs = iocs.filter(
+    (ioc) =>
+      ioc.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ioc.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ioc.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ioc.campaign && ioc.campaign.toLowerCase().includes(searchTerm.toLowerCase())),
+  )
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        alert(`Copied: ${text}`)
+      })
+      .catch((err) => {
+        console.error("Failed to copy: ", err)
+      })
+  }
+
+  const getConfidenceBadge = (confidence: string) => {
+    switch (confidence) {
+      case "High":
+        return <Badge className="bg-red-500 hover:bg-red-600">High</Badge>
+      case "Medium":
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600">Medium</Badge>
+      case "Low":
+        return <Badge className="bg-blue-500 hover:bg-blue-600">Low</Badge>
       default:
-        cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-        setTotalCount(20000)
-        break
-    }
-
-    // For demo purposes, we'll just show different numbers of items based on the time filter
-    // In a real app, you would filter by the actual timestamp
-    let filteredItems: IOCData[]
-    switch (timeFilter) {
-      case "1h":
-        filteredItems = fullIOCData.slice(0, 3)
-        break
-      case "6h":
-        filteredItems = fullIOCData.slice(0, 5)
-        break
-      case "12h":
-        filteredItems = fullIOCData.slice(0, 8)
-        break
-      case "24h":
-      default:
-        filteredItems = fullIOCData
-        break
-    }
-
-    // Apply search filter if there is a search query
-    if (searchQuery) {
-      filteredItems = filteredItems.filter(
-        (item) =>
-          item.indicator.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.threatType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.country.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    }
-
-    setFilteredData(filteredItems)
-  }, [timeFilter, searchQuery])
-
-  const getIconForType = (type: string) => {
-    switch (type) {
-      case "file":
-        return <FileText className="h-4 w-4" />
-      case "url":
-        return <AlertTriangle className="h-4 w-4" />
-      case "email":
-        return <Shield className="h-4 w-4" />
-      default:
-        return <Server className="h-4 w-4" />
+        return <Badge>Unknown</Badge>
     }
   }
 
-  const getConfidenceBadgeColor = (confidence: number) => {
-    if (confidence >= 80) return "bg-green-500/20 text-green-500 border-green-500/30"
-    if (confidence >= 50) return "bg-amber-500/20 text-amber-500 border-amber-500/30"
-    return "bg-red-500/20 text-red-500 border-red-500/30"
+  const downloadCSV = () => {
+    const headers = ["Type", "Value", "First Seen", "Last Seen", "Confidence", "Source", "Campaign"]
+    const csvContent = [
+      headers.join(","),
+      ...filteredIOCs.map((ioc) =>
+        [
+          ioc.type,
+          `"${ioc.value}"`,
+          ioc.firstSeen,
+          ioc.lastSeen,
+          ioc.confidence,
+          ioc.source,
+          ioc.campaign || "N/A",
+        ].join(","),
+      ),
+    ].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", "iocs_export.csv")
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
-    <TooltipProvider>
-      <Card className="border-primary/20">
-        <CardContent className="p-6">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-2">Indicators of Compromise</h2>
-            <p className="text-muted-foreground text-sm">
-              Comprehensive list of all detected IOCs with detailed information and filtering options.
-            </p>
+    <Card className="w-full shadow-lg border-border/50">
+      <CardHeader className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-red-400" />
+            <CardTitle>Indicators of Compromise (IOCs)</CardTitle>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadCSV}
+            className="text-white border-white/20 hover:bg-white/10 hover:text-white"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4">
+        <div className="flex items-center mb-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search IOCs by value, type, source, or campaign..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 bg-background/50"
+          />
+        </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <div className="relative w-[250px]">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search IOCs..."
-                  className="pl-9"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Filter className="h-4 w-4" />
-                Filter
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="font-normal">
-                {timeFilter} data
-              </Badge>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-            </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
           </div>
-
+        ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Indicator</TableHead>
+                <TableRow className="bg-muted/50 hover:bg-muted">
                   <TableHead>Type</TableHead>
-                  <TableHead>Threat Type</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Country</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>First Seen</TableHead>
+                  <TableHead>Last Seen</TableHead>
                   <TableHead>Confidence</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Campaign</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((ioc, i) => (
-                  <TableRow key={i} className="hover:bg-muted/20">
-                    <TableCell className="font-mono text-xs truncate max-w-[180px]">{ioc.indicator}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <div className="text-primary">{getIconForType(ioc.type)}</div>
-                        <span>{ioc.type}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{ioc.threatType}</TableCell>
-                    <TableCell>{ioc.source}</TableCell>
-                    <TableCell className="text-muted-foreground">{ioc.timestamp}</TableCell>
-                    <TableCell>{ioc.country}</TableCell>
-                    <TableCell>
-                      <div className="w-full bg-muted/30 rounded-full h-1.5 mt-1.5 mb-1">
-                        <div
-                          className="h-1.5 rounded-full bg-gradient-to-r from-red-500 via-amber-500 to-green-500"
-                          style={{ width: `${ioc.confidence}%` }}
-                        />
-                      </div>
-                      <span className="text-xs">{ioc.confidence}%</span>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <span className="sr-only">View details</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>View details</TooltipContent>
-                      </Tooltip>
+                {filteredIOCs.length > 0 ? (
+                  filteredIOCs.map((ioc) => (
+                    <TableRow key={ioc.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{ioc.type}</TableCell>
+                      <TableCell className="font-mono text-sm">{ioc.value}</TableCell>
+                      <TableCell>{ioc.firstSeen}</TableCell>
+                      <TableCell>{ioc.lastSeen}</TableCell>
+                      <TableCell>{getConfidenceBadge(ioc.confidence)}</TableCell>
+                      <TableCell>{ioc.source}</TableCell>
+                      <TableCell>{ioc.campaign || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(ioc.value)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Copy className="h-4 w-4" />
+                          <span className="sr-only">Copy value</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No IOCs found matching your search criteria.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
-            <div className="text-sm text-muted-foreground mt-4">
-              Showing {filteredData.length} of {totalCount} IOCs
-            </div>
           </div>
-        </CardContent>
-      </Card>
-    </TooltipProvider>
+        )}
+      </CardContent>
+    </Card>
   )
 }

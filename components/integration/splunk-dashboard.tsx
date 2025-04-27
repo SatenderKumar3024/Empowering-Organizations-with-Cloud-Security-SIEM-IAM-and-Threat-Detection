@@ -1,251 +1,223 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Badge } from "@/components/ui/badge"
-import { Search, Play, Clock, AlertTriangle, Shield, Server, Download, RefreshCw } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { LogoPlaceholder } from "@/components/ui/logo-placeholder"
+import { Button } from "@/components/ui/button"
+import { Loader2, RefreshCw, Download } from "lucide-react"
+import Image from "next/image"
 
-interface SplunkEvent {
-  id: string
-  timestamp: string
-  source: string
-  sourceType: string
-  host: string
-  message: string
-  severity: "info" | "low" | "medium" | "high" | "critical"
-}
-
-const mockSplunkEvents: SplunkEvent[] = [
-  {
-    id: "event-001",
-    timestamp: "2025-04-27T10:15:23.000Z",
-    source: "firewall",
-    sourceType: "cisco:asa",
-    host: "fw-edge-01",
-    message: "Connection denied by ACL from 203.0.113.100:12345 to 10.0.0.5:443",
-    severity: "medium",
-  },
-  {
-    id: "event-002",
-    timestamp: "2025-04-27T10:14:56.000Z",
-    source: "waf",
-    sourceType: "f5:bigip",
-    host: "waf-prod-02",
-    message: "SQL injection attempt detected in HTTP request",
-    severity: "high",
-  },
-  {
-    id: "event-003",
-    timestamp: "2025-04-27T10:13:42.000Z",
-    source: "ids",
-    sourceType: "snort",
-    host: "ids-dmz-01",
-    message: "INDICATOR-SCAN Port scan detected from 198.51.100.75",
-    severity: "medium",
-  },
-  {
-    id: "event-004",
-    timestamp: "2025-04-27T10:12:18.000Z",
-    source: "windows",
-    sourceType: "windows:security",
-    host: "dc-prod-01",
-    message: "Multiple failed login attempts for administrator account",
-    severity: "high",
-  },
-  {
-    id: "event-005",
-    timestamp: "2025-04-27T10:11:05.000Z",
-    source: "proxy",
-    sourceType: "bluecoat:proxy",
-    host: "proxy-corp-01",
-    message: "Connection to known malicious domain malware-site.example.com",
-    severity: "critical",
-  },
-  {
-    id: "event-006",
-    timestamp: "2025-04-27T10:10:32.000Z",
-    source: "antivirus",
-    sourceType: "symantec:ep",
-    host: "ws-finance-15",
-    message: "Malware detected: Trojan.Emotet in file attachment",
-    severity: "critical",
-  },
-  {
-    id: "event-007",
-    timestamp: "2025-04-27T10:09:47.000Z",
-    source: "linux",
-    sourceType: "syslog",
-    host: "web-app-03",
-    message: "Failed SSH authentication attempt from 192.0.2.155",
-    severity: "low",
-  },
-  {
-    id: "event-008",
-    timestamp: "2025-04-27T10:08:23.000Z",
-    source: "dns",
-    sourceType: "bind:query",
-    host: "dns-internal-01",
-    message: "DNS query for known C2 domain botnet-controller.example.net",
-    severity: "high",
-  },
+const alertData = [
+  { name: "00:00", alerts: 12 },
+  { name: "01:00", alerts: 8 },
+  { name: "02:00", alerts: 5 },
+  { name: "03:00", alerts: 3 },
+  { name: "04:00", alerts: 2 },
+  { name: "05:00", alerts: 4 },
+  { name: "06:00", alerts: 7 },
+  { name: "07:00", alerts: 15 },
+  { name: "08:00", alerts: 25 },
+  { name: "09:00", alerts: 32 },
+  { name: "10:00", alerts: 28 },
+  { name: "11:00", alerts: 20 },
+  { name: "12:00", alerts: 18 },
+  { name: "13:00", alerts: 23 },
+  { name: "14:00", alerts: 31 },
+  { name: "15:00", alerts: 38 },
+  { name: "16:00", alerts: 42 },
+  { name: "17:00", alerts: 35 },
+  { name: "18:00", alerts: 28 },
+  { name: "19:00", alerts: 22 },
+  { name: "20:00", alerts: 18 },
+  { name: "21:00", alerts: 15 },
+  { name: "22:00", alerts: 12 },
+  { name: "23:00", alerts: 10 },
 ]
 
-export function SplunkDashboard({ timeFilter = "24h" }: { timeFilter?: string }) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState<SplunkEvent[]>(mockSplunkEvents)
-  const { toast } = useToast()
+const sourceData = [
+  { name: "Firewall", value: 145 },
+  { name: "IDS/IPS", value: 87 },
+  { name: "EDR", value: 65 },
+  { name: "WAF", value: 43 },
+  { name: "DNS", value: 32 },
+  { name: "DHCP", value: 21 },
+  { name: "VPN", value: 18 },
+]
 
-  const handleSearch = () => {
-    setIsSearching(true)
+const severityData = [
+  { name: "Critical", value: 24 },
+  { name: "High", value: 45 },
+  { name: "Medium", value: 78 },
+  { name: "Low", value: 53 },
+  { name: "Informational", value: 120 },
+]
 
-    // Simulate search delay
+export function SplunkDashboard() {
+  const [activeTab, setActiveTab] = useState("alerts")
+  const [isLoading, setIsLoading] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(new Date())
+
+  const handleRefresh = () => {
+    setIsLoading(true)
     setTimeout(() => {
-      if (searchQuery.trim() === "") {
-        setSearchResults(mockSplunkEvents)
-      } else {
-        const filtered = mockSplunkEvents.filter(
-          (event) =>
-            event.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            event.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            event.host.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
-        setSearchResults(filtered)
-      }
-
-      setIsSearching(false)
-
-      toast({
-        title: "Search completed",
-        description: `Found ${searchResults.length} events matching your query`,
-      })
-    }, 1000)
+      setIsLoading(false)
+      setLastUpdated(new Date())
+    }, 1500)
   }
 
-  const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return <Badge className="bg-red-500/20 text-red-500 border-red-500/30">Critical</Badge>
-      case "high":
-        return <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30">High</Badge>
-      case "medium":
-        return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30">Medium</Badge>
-      case "low":
-        return <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">Low</Badge>
-      default:
-        return <Badge className="bg-gray-500/20 text-gray-500 border-gray-500/30">Info</Badge>
-    }
-  }
-
-  const getSourceIcon = (source: string) => {
-    switch (source) {
-      case "firewall":
-        return <Shield className="h-4 w-4" />
-      case "waf":
-        return <Shield className="h-4 w-4" />
-      case "ids":
-        return <AlertTriangle className="h-4 w-4" />
-      case "windows":
-        return <Server className="h-4 w-4" />
-      case "proxy":
-        return <Server className="h-4 w-4" />
-      case "antivirus":
-        return <Shield className="h-4 w-4" />
-      case "linux":
-        return <Server className="h-4 w-4" />
-      case "dns":
-        return <Server className="h-4 w-4" />
-      default:
-        return <Server className="h-4 w-4" />
-    }
-  }
+  useEffect(() => {
+    // Initial load simulation
+    setIsLoading(true)
+    setTimeout(() => {
+      setIsLoading(false)
+    }, 1500)
+  }, [])
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-2">
+    <Card className="w-full shadow-lg border-border/50">
+      <CardHeader className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <LogoPlaceholder
-              text="SPLUNK"
-              bgColor="#000000"
-              color="#65A637"
-              height="24px"
-              width="80px"
-              className="mr-2"
-            />
-            Splunk Security Dashboard
-          </CardTitle>
-          <Badge variant="outline">Time range: {timeFilter}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-6">
-          <div className="flex gap-2 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search SPL: source=* host=* severity=high OR severity=critical"
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              />
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 relative">
+              {"/splunk-logo.png" ? (
+                <Image src="/splunk-logo.png" alt="Splunk Logo" fill className="object-contain" />
+              ) : (
+                <div className="h-full w-full bg-muted flex items-center justify-center rounded-full">
+                  <span className="text-xs font-medium">S</span>
+                </div>
+              )}
             </div>
-            <Button onClick={handleSearch} disabled={isSearching} className="gap-2">
-              {isSearching ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-              {isSearching ? "Searching..." : "Search"}
+            <CardTitle>Splunk Security Dashboard</CardTitle>
+            <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+              Connected
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="text-white border-white/20 hover:bg-white/10 hover:text-white"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+              {isLoading ? "Refreshing..." : "Refresh"}
             </Button>
-            <Button variant="outline" className="gap-2">
-              <Clock className="h-4 w-4" />
-              {timeFilter}
-            </Button>
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-white border-white/20 hover:bg-white/10 hover:text-white"
+            >
+              <Download className="h-4 w-4 mr-1" />
               Export
             </Button>
           </div>
-
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Time</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Host</TableHead>
-                  <TableHead className="w-[40%]">Message</TableHead>
-                  <TableHead>Severity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {searchResults.map((event) => (
-                  <TableRow key={event.id} className="hover:bg-muted/20">
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(event.timestamp).toLocaleTimeString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <div className="text-primary">{getSourceIcon(event.source)}</div>
-                        <span>{event.source}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{event.host}</TableCell>
-                    <TableCell className="max-w-[300px] truncate">{event.message}</TableCell>
-                    <TableCell>{getSeverityBadge(event.severity)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="text-sm text-muted-foreground mt-4">
-            {searchResults.length} events found • Query time: 0.35s
-          </div>
         </div>
+        <div className="text-xs text-white/70 mt-1">Last updated: {lastUpdated.toLocaleTimeString()}</div>
+      </CardHeader>
+      <CardContent className="p-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="alerts">Alert Timeline</TabsTrigger>
+            <TabsTrigger value="sources">Alert Sources</TabsTrigger>
+            <TabsTrigger value="severity">Severity Distribution</TabsTrigger>
+          </TabsList>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center h-[300px]">
+              <div className="flex flex-col items-center gap-2">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                <div className="text-sm text-muted-foreground">Loading Splunk data...</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <TabsContent value="alerts" className="mt-0">
+                <ChartContainer
+                  config={{
+                    alerts: {
+                      label: "Security Alerts",
+                      color: "hsl(var(--chart-1))",
+                    },
+                  }}
+                  className="h-[300px]"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={alertData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="alerts"
+                        stroke="var(--color-alerts)"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+                <div className="text-sm text-muted-foreground mt-2 text-center">
+                  Security alert volume over the last 24 hours
+                </div>
+              </TabsContent>
+
+              <TabsContent value="sources" className="mt-0">
+                <ChartContainer
+                  config={{
+                    value: {
+                      label: "Alert Count",
+                      color: "hsl(var(--chart-2))",
+                    },
+                  }}
+                  className="h-[300px]"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={sourceData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Legend />
+                      <Bar dataKey="value" fill="var(--color-value)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+                <div className="text-sm text-muted-foreground mt-2 text-center">Security alerts by source system</div>
+              </TabsContent>
+
+              <TabsContent value="severity" className="mt-0">
+                <ChartContainer
+                  config={{
+                    value: {
+                      label: "Alert Count",
+                      color: "hsl(var(--chart-3))",
+                    },
+                  }}
+                  className="h-[300px]"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={severityData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Legend />
+                      <Bar dataKey="value" fill="var(--color-value)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+                <div className="text-sm text-muted-foreground mt-2 text-center">Security alerts by severity level</div>
+              </TabsContent>
+            </>
+          )}
+        </Tabs>
       </CardContent>
     </Card>
   )
