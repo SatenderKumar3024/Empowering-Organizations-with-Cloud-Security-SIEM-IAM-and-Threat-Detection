@@ -49,9 +49,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
-import Image from "next/image"
 import { useToast } from "@/hooks/use-toast"
 import { webSocketService, initializeWebSocketDemo } from "@/lib/websocket-service"
+import { SplunkLogo } from "@/components/ui/splunk-logo"
 
 // Threat statistics data
 const threatStats = [
@@ -555,16 +555,11 @@ export function EnhancedSplunkDashboard() {
       <CardHeader className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 relative">
-              {"/splunk-logo.png" ? (
-                <Image src="/splunk-logo.png" alt="Splunk Logo" fill className="object-contain" />
-              ) : (
-                <div className="h-full w-full bg-muted flex items-center justify-center rounded-full">
-                  <span className="text-xs font-medium">S</span>
-                </div>
-              )}
+            <SplunkLogo size="md" className="shadow-lg" />
+            <div className="flex flex-col">
+              <CardTitle>Splunk Security Dashboard</CardTitle>
+              <div className="text-xs text-white/70">Enterprise Security Analytics</div>
             </div>
-            <CardTitle>Splunk Security Dashboard</CardTitle>
             <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
               Connected
             </Badge>
