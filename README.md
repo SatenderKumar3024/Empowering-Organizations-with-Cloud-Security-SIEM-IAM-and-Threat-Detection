@@ -7,7 +7,7 @@
 ## 📖 About This Project
 
 This is a real-time **Cloud Security Incident Response** platform designed to help security professionals manage, detect, and respond to cybersecurity threats effectively.  
-It integrates **Incident Response Playbooks**, **GRC Compliance Mapping**, **Threat Intelligence Visualization**, and **SIEM Integrations**, built according to leading industry standards like **NIST 800-61**, **NIST CSF**, and **ISO 27035**.
+It integrates **Incident Response Playbooks**, **GRC Compliance Mapping**, **Threat Intelligence Visualization**, and **SIEM Integrations**, built according to leading industry standards like **NIST 800-61**, **NIST CSF**, and **ISO 27035**. 
 
 ---
 
